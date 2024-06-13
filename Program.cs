@@ -1,5 +1,7 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using PersonAPI.Data;
+using PersonAPI.Dtos;
 using PersonAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +13,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("SqlDbConnection"));
 });
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
@@ -23,21 +26,30 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // -------------------------------------------------------------------------------------------------
-app.MapGet("api/v1/people", async (AppDbContext dbContext) =>
+app.MapGet("api/v1/people", async (AppDbContext dbContext, IMapper mapper) =>
 {
     var people = await dbContext.People.ToListAsync();
-    return Results.Ok(people);
+    
+    return Results.Ok(mapper.Map<IEnumerable<PersonDto>>(people));
 });
 
 // -------------------------------------------------------------------------------------------------
-app.MapGet("api/v1/people/{id}", async (AppDbContext dbContext, int id) =>
+app.MapGet("api/v1/people/{id}", async (AppDbContext dbContext, int id, IMapper mapper) =>
 {
-    var person = await dbContext.People.FindAsync(id);
-    if (person == null)
-    {
-        return Results.NotFound();
-    }
-    return Results.Ok(person);
+    var personModel = await dbContext.People.FindAsync(id);
+
+    if (personModel == null) return Results.NotFound();
+
+    // var personDto = new PersonDto
+    // {
+    //     Id = personModel.Id,
+    //     FullName = personModel.FullName,
+    //     Telephone = personModel.Telephone
+    // };
+
+    var personDto = mapper.Map<PersonDto>(personModel);
+
+    return Results.Ok(personDto);
 });
 
 // -------------------------------------------------------------------------------------------------
